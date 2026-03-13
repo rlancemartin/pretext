@@ -655,7 +655,7 @@ function commitFrame(now: number): boolean {
   let nextIndex = 0
   nextIndex = projectBodyLines(leftLines, 'line line--left', font, lineHeight, nextIndex)
   projectBodyLines(rightLines, 'line line--right', font, lineHeight, nextIndex)
-  document.body.style.cursor = hoveredLogo === null ? 'default' : 'pointer'
+  document.body.style.cursor = hoveredLogo === null ? '' : 'pointer'
 
   return animating
 }

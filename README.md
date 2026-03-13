@@ -107,7 +107,6 @@ bun run corpus-font-matrix --id=ar-risalat-al-ghufran-part-1 --samples=5  # samp
 Pages:
 - `/demo.html` — manual line-placement demo streamed from repeated `layoutNextLine()` calls
 - `/dynamic-layout.html` — fixed-height editorial spread with a continuous two-column flow, obstacle-aware title routing, and live logo-driven reflow
-- `/chronicle.html` — poster-like editorial spread with procedural contour art and text routed around fixed copy blocks
 - `/accuracy.html` — sweep across fonts, sizes, widths, i18n texts
 - `/benchmark.html` — performance comparison
 - `/bubbles.html` — bubble shrinkwrap demo
