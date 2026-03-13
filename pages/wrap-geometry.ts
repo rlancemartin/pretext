@@ -284,21 +284,19 @@ async function makeWrapHull(src: string, options: WrapHullOptions): Promise<Poin
 
 function getPolygonXsAtY(points: Point[], y: number): number[] {
   const xs: number[] = []
+  let a = points[points.length - 1]
+  if (!a) return xs
 
   for (let index = 0; index < points.length; index++) {
-    const start = points[index]!
-    const end = points[(index + 1) % points.length]!
-    if (start.y === end.y) continue
-
-    const minY = Math.min(start.y, end.y)
-    const maxY = Math.max(start.y, end.y)
-    if (y < minY || y >= maxY) continue
-
-    const t = (y - start.y) / (end.y - start.y)
-    xs.push(start.x + (end.x - start.x) * t)
+    const b = points[index]!
+    if ((a.y <= y && y < b.y) || (b.y <= y && y < a.y)) {
+      xs.push(a.x + ((y - a.y) * (b.x - a.x)) / (b.y - a.y))
+    }
+    a = b
   }
 
-  return xs.sort((a, b) => a - b)
+  xs.sort((a, b) => a - b)
+  return xs
 }
 
 function cross(origin: Point, a: Point, b: Point): number {
