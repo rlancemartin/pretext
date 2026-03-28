@@ -21,26 +21,30 @@
       body {
         margin: 0;
         min-height: 100%;
+        height: 100%;
         background: var(--paper);
         color: var(--ink);
+        overscroll-behavior: none;
       }
 
       body {
         font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, serif;
         cursor: default;
+        overflow: hidden;
       }
 
       .page {
         position: relative;
         height: 100vh;
         overflow: hidden;
+        overscroll-behavior: none;
         isolation: isolate;
       }
 
       .page--mobile {
         min-height: 100svh;
-        height: auto;
-        overflow: visible;
+        height: 100svh;
+        overflow: hidden;
       }
 
       .atmosphere {
@@ -92,8 +96,8 @@
       }
 
       .page--mobile .stage {
-        height: auto;
-        min-height: 100svh;
+        height: 100%;
+        min-height: 0;
       }
 
       .headline {

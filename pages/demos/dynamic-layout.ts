@@ -47,7 +47,6 @@ const HEADLINE_FONT_FAMILY = '"Iowan Old Style", "Palatino Linotype", "Book Anti
 const HINT_PILL_SAFE_TOP = 72
 const NARROW_BREAKPOINT = 760
 const NARROW_COLUMN_MAX_WIDTH = 430
-const NARROW_CONTENT_REGION_HEIGHT = 12_000
 
 function resolveImportedAssetUrl(assetUrl: string): string {
   if (/^(?:[a-z]+:)?\/\//i.test(assetUrl) || assetUrl.startsWith('data:') || assetUrl.startsWith('blob:')) {
@@ -503,7 +502,7 @@ function buildLayout(pageWidth: number, pageHeight: number, lineHeight: number):
     const headlineFont = `700 ${headlineFontSize}px ${HEADLINE_FONT_FAMILY}`
     const creditGap = Math.round(Math.max(12, lineHeight * 0.5))
     const copyGap = Math.round(Math.max(18, lineHeight * 0.7))
-    const claudeSize = Math.round(Math.min(84, pageWidth * 0.21, pageHeight * 0.1))
+    const claudeSize = Math.round(Math.min(92, pageWidth * 0.23, pageHeight * 0.11))
     const openaiSize = Math.round(Math.min(138, pageWidth * 0.34))
     const headlineRegion: Rect = {
       x: gutter,
@@ -518,8 +517,8 @@ function buildLayout(pageWidth: number, pageHeight: number, lineHeight: number):
       height: openaiSize,
     }
     const claudeRect: Rect = {
-      x: pageWidth - gutter - claudeSize,
-      y: 10,
+      x: pageWidth - gutter - Math.round(claudeSize * 0.88),
+      y: 4,
       width: claudeSize,
       height: claudeSize,
     }
@@ -686,7 +685,7 @@ function evaluateLayout(
       x: Math.round((layout.pageWidth - layout.columnWidth) / 2),
       y: copyTop,
       width: layout.columnWidth,
-      height: NARROW_CONTENT_REGION_HEIGHT,
+      height: Math.max(0, layout.pageHeight - copyTop - layout.gutter),
     }
 
     const bodyResult = layoutColumn(
@@ -698,24 +697,13 @@ function evaluateLayout(
       'left',
     )
 
-    let contentHeight = Math.max(
-      layout.pageHeight,
-      creditTop + CREDIT_LINE_HEIGHT + layout.gutter,
-      layout.claudeRect.y + layout.claudeRect.height + layout.gutter,
-      layout.openaiRect.y + layout.openaiRect.height + layout.gutter,
-    )
-    if (bodyResult.lines.length > 0) {
-      const lastLine = bodyResult.lines[bodyResult.lines.length - 1]!
-      contentHeight = Math.max(contentHeight, lastLine.y + lineHeight + layout.gutter)
-    }
-
     return {
       headlineLines,
       creditLeft,
       creditTop,
       leftLines: bodyResult.lines,
       rightLines: [],
-      contentHeight,
+      contentHeight: layout.pageHeight,
       hits,
     }
   }
@@ -824,6 +812,9 @@ function scheduleRender(): void {
 }
 
 window.addEventListener('resize', scheduleRender)
+pageNode.addEventListener('touchmove', event => {
+  event.preventDefault()
+}, { passive: false })
 document.addEventListener('mousemove', event => {
   events.mousemove = event
   scheduleRender()
