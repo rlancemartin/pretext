@@ -7,11 +7,11 @@
 // Terracotta background → invisible
 // This preserves every detail of the hand-drawn line art.
 
-import nodesThinkUrl from '../../assets/brand/Nodes-Think-Clay.png'
+import nodesThinkUrl from '../../assets/brand.png'
 
 const VW = 1400, VH = 900
-const FONT_SIZE = 13
-const CW = 7.8, CH = 16
+const FONT_SIZE = 9
+const CW = 5.4, CH = 11
 const FONT_FAMILY = '"Courier New", Courier, monospace'
 const FONT = `${FONT_SIZE}px ${FONT_FAMILY}`
 
@@ -21,7 +21,7 @@ const TITLE_X = 210
 const TITLE_LH = 70
 
 // Variable-size foreground: quantised font cache to avoid ctx.font churn
-const SIZE_MIN = 11, SIZE_MAX = 32
+const SIZE_MIN = 5, SIZE_MAX = 15
 const fontFor: string[] = []
 for (let s = SIZE_MIN; s <= SIZE_MAX; s++) fontFor[s] = `${s}px ${FONT_FAMILY}`
 
@@ -206,20 +206,20 @@ function sampleMask(vx: number, vy: number, scx: number, scy: number): [number, 
 }
 
 // --- Water ripple system ---------------------------------------------------
-// Each ripple is a packet of N_ECHO concentric rings. A ring contributes a
-// signed surface height h at each cell: positive on the leading crest,
-// slightly negative in the trough behind it. Characters displace radially
-// by h·DISP_GAIN and brighten by |h| toward ivory.
+// Each ripple emits N_ECHO concentric rings with chromatic warmth: the leading
+// echoes glow warm gold, later echoes cool to blue. The ring envelope uses an
+// initial burst factor that decays into a long sustain, so clicks feel punchy
+// yet the wave lingers gracefully across the portrait.
 interface Ripple { x: number; y: number; startTime: number; amp: number }
 const ripples: Ripple[] = []
 const nodeHub = { u: 0.5, v: 0.35 }
 
-const RIPPLE_SPEED = 380
-const RIPPLE_DURATION = 2.6
-const N_ECHO = 3
-const ECHO_DELAY = 0.22
-const ECHO_AMPS = [1.0, 0.45, 0.22]
-const DISP_GAIN = 11
+const RIPPLE_SPEED = 300
+const RIPPLE_DURATION = 4.2
+const N_ECHO = 6
+const ECHO_DELAY = 0.16
+const ECHO_AMPS = [1.0, 0.65, 0.42, 0.28, 0.16, 0.08]
+const DISP_GAIN = 18
 
 declare global {
   interface Window {
@@ -242,10 +242,11 @@ function pruneRipples(t: number): void {
   }
 }
 
-/** Returns [glow 0..1, dx, dy] — glow is unsigned crest intensity for colour;
- *  (dx,dy) is the summed radial displacement in px. */
-function computeRipple(px: number, py: number, t: number): [number, number, number] {
-  let glow = 0, dx = 0, dy = 0
+/** Returns [glow 0..1, dx, dy, warmth −1..+1] — glow is unsigned crest
+ *  intensity; (dx,dy) is summed radial displacement in px; warmth encodes
+ *  chromatic phase (+1 = gold leading edge, −1 = cool blue trail). */
+function computeRipple(px: number, py: number, t: number): [number, number, number, number] {
+  let glow = 0, dx = 0, dy = 0, warmAcc = 0, warmWeight = 0
   for (const rip of ripples) {
     const ex = px - rip.x, ey = py - rip.y
     const dist = Math.sqrt(ex * ex + ey * ey)
@@ -256,19 +257,25 @@ function computeRipple(px: number, py: number, t: number): [number, number, numb
       if (el < 0 || el > RIPPLE_DURATION) continue
       const age = el / RIPPLE_DURATION
       const radius = el * RIPPLE_SPEED
-      const width = 55 + age * 120              // ring spreads as it travels
-      const d = (dist - radius) / width          // signed, −1..+1 across ring
+      const width = 40 + age * 160              // tight initial ring, wide spread
+      const d = (dist - radius) / width
       if (d < -1.4 || d > 1.0) continue
-      // One full sine cycle across the ring: crest at d≈−0.25, trough at d≈+0.4
-      const h = Math.sin((d + 0.25) * Math.PI) * (1 - d * 0.3)
-      const fall = (1 - age) * (1 - age)
+      const h = Math.sin((d + 0.25) * Math.PI) * (1 - d * d * 0.3)
+      // Burst on impact, then long quadratic sustain
+      const fall = (1 - age) * (1 - age) * (1 + 1.5 * Math.exp(-age * 6))
       const a = rip.amp * ECHO_AMPS[k]! * fall
+      const intensity = Math.abs(h) * a
+      // Chromatic warmth: first echoes warm gold, later echoes cool blue
+      const echoWarmth = 1 - k * (2 / (N_ECHO - 1))
+      warmAcc += intensity * echoWarmth
+      warmWeight += intensity
       glow += Math.max(0, h) * a
       dx += ux * h * a * DISP_GAIN
       dy += uy * h * a * DISP_GAIN
     }
   }
-  return [Math.min(1, glow), dx, dy]
+  const warmth = warmWeight > 0.001 ? Math.max(-1, Math.min(1, warmAcc / warmWeight)) : 0
+  return [Math.min(1, glow), dx, dy, warmth]
 }
 
 async function init(): Promise<void> {
@@ -308,7 +315,7 @@ function render(now: number): void {
   if (lastRawP <= 0 && rawP > 0) {
     const hx = VW * 0.62 - SIL_W / 2 + nodeHub.u * SIL_W
     const hy = VH / 2 - SIL_H / 2 + nodeHub.v * SIL_H
-    ripples.push({ x: hx, y: hy, startTime: t, amp: 0.35 })
+    ripples.push({ x: hx, y: hy, startTime: t, amp: 0.25 })
   }
   lastRawP = rawP
   window.__ghostPulse = pulse
@@ -327,14 +334,14 @@ function render(now: number): void {
       if (ch === ' ') continue
       const cx2 = MX + c * CW + CW / 2
       const [bright, white] = sampleMask(cx2, cy, silCX, silCY)
-      const [rv, rdx, rdy] = computeRipple(cx2, cy, t)
+      const [rv, rdx, rdy, rWarmth] = computeRipple(cx2, cy, t)
 
       if (bright < 0.03 && rv <= 0.01) continue
 
       // Variable glyph size: swell on ink strokes & nodes, lift on ripple crest
       const wLevel = white > 0.12 ? Math.min(1, white * 2) : 0
       const sz = Math.max(SIZE_MIN, Math.min(SIZE_MAX, Math.round(
-        FONT_SIZE * (0.85 + bright * 1.1 + wLevel * 0.5 + rv * 0.9)
+        FONT_SIZE * (0.55 + bright * 0.65 + wLevel * 0.35 + rv * 0.5)
       )))
       if (sz !== curSize) { ctx.font = fontFor[sz]!; curSize = sz }
 
@@ -357,9 +364,21 @@ function render(now: number): void {
       }
 
       if (rv > 0.01) {
-        cr = cr + (250 - cr) * rv
-        cg = cg + (250 - cg) * rv
-        cb = cb + (247 - cb) * rv
+        // Chromatic ripple: gold leading edge → ivory → cool blue trail
+        let rr: number, rg: number, rb: number
+        if (rWarmth >= 0) {
+          rr = 250 + 5 * rWarmth
+          rg = 250 - 35 * rWarmth
+          rb = 247 - 167 * rWarmth
+        } else {
+          const cool = -rWarmth
+          rr = 250 - 110 * cool
+          rg = 250 - 70 * cool
+          rb = 247 + 8 * cool
+        }
+        cr = cr + (rr - cr) * rv
+        cg = cg + (rg - cg) * rv
+        cb = cb + (rb - cb) * rv
         alpha = Math.min(1, alpha + rv * 0.85)
       }
 
